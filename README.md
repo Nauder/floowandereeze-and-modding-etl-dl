@@ -1,7 +1,7 @@
 # Floowandereeze & Modding ETL
 
-[![Pylint](https://github.com/Nauder/floowandereeze-and-modding-dl-etl/actions/workflows/pylint.yml/badge.svg)](https://github.com/Nauder/floowandereeze-and-modding-dl-etl/actions/workflows/pylint.yml)
-[![Black](https://github.com/Nauder/floowandereeze-and-modding-dl-etl/actions/workflows/black.yml/badge.svg)](https://github.com/Nauder/floowandereeze-and-modding-dl-etl/actions/workflows/black.yml)
+[![Pylint](https://github.com/Nauder/floowandereeze-and-modding-etl-dl/actions/workflows/pylint.yml/badge.svg)](https://github.com/Nauder/floowandereeze-and-modding-etl-dl/actions/workflows/pylint.yml)
+[![Black](https://github.com/Nauder/floowandereeze-and-modding-etl-dl/actions/workflows/black.yml/badge.svg)](https://github.com/Nauder/floowandereeze-and-modding-etl-dl/actions/workflows/black.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 ![Python](https://img.shields.io/badge/python-3.8+-blue?logo=python&logoColor=white)
@@ -58,8 +58,8 @@ Ensure you have the following installed:
 
 ```sh
 # Clone the repository
-git clone https://github.com/Nauder/floowandereeze-and-modding-dl-etl.git
-cd floowandereeze-and-modding-dl-etl
+git clone https://github.com/Nauder/floowandereeze-and-modding-etl-dl.git
+cd floowandereeze-and-modding-etl-dl
 
 # Install dependencies
 pip install -r requirements.txt

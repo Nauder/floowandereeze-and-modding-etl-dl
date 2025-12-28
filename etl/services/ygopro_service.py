@@ -12,8 +12,9 @@ class YGOProService:
     """
 
     # YGOPro API URL
+    # Note: The 'Duel Links' format option appears to be very outdated, so OCG is used as a workaround
     API_URL: str = (
-        "https://db.ygoprodeck.com/api/v7/cardinfo.php?format=Duel%20Links&misc=Yes"
+        "https://db.ygoprodeck.com/api/v7/cardinfo.php?format=OCG&misc=Yes"
     )
 
     def __init__(self):

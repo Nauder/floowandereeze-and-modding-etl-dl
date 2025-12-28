@@ -60,7 +60,7 @@ class DataService:
             json.dump(ids, outfile)
 
     def process_dirs(
-            self, dir_list: List[List[Union[str, bool]]]
+        self, dir_list: List[List[Union[str, bool]]]
     ) -> Dict[str, Union[Dict[str, Any], List[Any]]]:
         """Process a list of directories to extract game data.
 
@@ -240,7 +240,7 @@ class DataService:
                 k: v
                 for k, v in data["card"].items()
                 if isinstance(v, dict)
-                   and all(key in v for key in ["small", "medium", "large", "id"])
+                and all(key in v for key in ["small", "medium", "large", "id"])
             }
 
             if valid_cards:

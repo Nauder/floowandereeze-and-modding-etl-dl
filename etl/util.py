@@ -128,5 +128,11 @@ def get_data_wrapper() -> Dict[str, Any]:
         - card: A dictionary for card data.
         - sleeve: A dictionary for sleeve data.
         - playmat: A dictionary for playmat data.
+        - character: A list of CharacterAssets objects.
     """
-    return {"card": {}, "sleeve": {}, "playmat": {}}
+    return {
+        "card": {},
+        "sleeve": {},
+        "playmat": {},
+        "character": [],
+    }

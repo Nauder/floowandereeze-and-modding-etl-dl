@@ -9,9 +9,6 @@ from datetime import datetime
 
 from pandas import DataFrame, Series
 
-from database.models import CardModel
-from database.objects import session
-from .character_service import CharacterAssets
 from util import (
     GAME_PATH,
     get_data_wrapper,
@@ -21,8 +18,10 @@ from util import (
     merge_nested_dicts,
 )
 
+from .character_service import CharacterAssets
+from .card_service import get_card_names
 from .game_service import GameService
-from .ygopro_service import YGOProService
+from .text_service import TextService
 
 
 class DataService:
@@ -53,7 +52,6 @@ class DataService:
             results = list(executor.map(self.process_dirs, dir_chunks))
 
         for result in results:
-            print(f"characters: {len(result['character'])}")
             self.merge_data(ids, result)
 
         # Convert CharacterAssets objects to dictionaries for JSON serialization
@@ -62,6 +60,7 @@ class DataService:
             for char in ids["character"]
         ]
 
+        os.makedirs("./etl/services/temp", exist_ok=True)
         with open("./etl/services/temp/ids.json", "w", encoding="utf-8") as outfile:
             json.dump(ids, outfile)
 
@@ -206,19 +205,12 @@ class DataService:
         return updated_dict
 
     def get_card_data(self) -> None:
-        """Extract and process card data from JSON files."""
+        """Resolve card and other asset names directly from the game files."""
 
         out_wrapper = get_data_wrapper()
-        ygopro_service = YGOProService()
-
-        data_response = ygopro_service.get_card_data()
-
-        if not data_response[0]:
-            raise Exception(f"Failed to get card data from YGOPRO: {data_response[1]}")
-
-        self.logger.info(
-            "YGOPro API call successful [%s], processing card data...", data_response[1]
-        )
+        card_names = get_card_names(GAME_PATH)
+        self.logger.info("Read %d card names from game files", len(card_names))
+        missing_names = []
 
         with open("./etl/services/temp/ids.json", "r", encoding="utf-8") as ids_json:
             ids = json.load(ids_json)
@@ -227,23 +219,19 @@ class DataService:
                 if {"small", "medium", "large"}.issubset(set(data.keys())):
 
                     self.logger.info("Processing %s", card)
-                    pro_card = (
-                        session.query(CardModel)
-                        .filter(CardModel.konami_id == card)
-                        .first()
-                    )
-
-                    if not pro_card:
+                    base_name = card_names.get(card)
+                    if not base_name:
+                        missing_names.append(card)
                         continue
 
-                    name = pro_card.name
+                    name = base_name
 
                     if name:
                         alt_count = 1
 
                         # Name duplication means this can't be parallelized :/
                         while name in out_wrapper["card"]:
-                            name = name + f" (alt {alt_count})"
+                            name = f"{base_name} (alt {alt_count})"
                             alt_count += 1
 
                         out_wrapper["card"][name] = {
@@ -255,12 +243,40 @@ class DataService:
 
                         self.logger.info("Processed %s", name)
 
+        if missing_names:
+            self.logger.warning(
+                "Skipped %d complete artwork entries without a game card name: %s",
+                len(missing_names),
+                ", ".join(missing_names),
+            )
+
         out_wrapper["playmat"] = ids["playmat"]
         out_wrapper["sleeve"] = ids["sleeve"]
         out_wrapper["character"] = ids["character"]
+        self._add_asset_names(out_wrapper)
 
         with open("./etl/services/temp/data.json", "w", encoding="utf-8") as outfile:
             json.dump(out_wrapper, outfile)
+
+    def _add_asset_names(self, data: Dict[str, Any]) -> None:
+        """Add optional local display names without filtering unnamed assets."""
+        texts = TextService(GAME_PATH)
+        for category in ("sleeve", "playmat"):
+            for item_id, asset in data[category].items():
+                asset["name"] = texts.item_name(item_id)
+            self.logger.info(
+                "Named %d/%d %s entries from game files",
+                sum(asset["name"] is not None for asset in data[category].values()),
+                len(data[category]),
+                category,
+            )
+        for character in data["character"]:
+            character["name"] = texts.character_name(character["konami_id"])
+        self.logger.info(
+            "Named %d/%d characters from game files",
+            sum(character["name"] is not None for character in data["character"]),
+            len(data["character"]),
+        )
 
     def write_data(self) -> None:
         """Write processed data to Parquet files and update version information."""
@@ -278,6 +294,14 @@ class DataService:
             if valid_sleeves:
                 sleeves = DataFrame()
                 sleeves.insert(0, "konami_id", valid_sleeves.keys())
+                sleeves.insert(
+                    0,
+                    "name",
+                    Series(
+                        [value.get("name") for value in valid_sleeves.values()],
+                        dtype="string",
+                    ),
+                )
                 sleeves.insert(
                     0,
                     "small",
@@ -343,6 +367,14 @@ class DataService:
                 fields.insert(0, "konami_id", valid_playmats.keys())
                 fields.insert(
                     0,
+                    "name",
+                    Series(
+                        [value.get("name") for value in valid_playmats.values()],
+                        dtype="string",
+                    ),
+                )
+                fields.insert(
+                    0,
                     "small",
                     Series([field["small"] for field in valid_playmats.values()]),
                 )
@@ -382,6 +414,7 @@ class DataService:
                     all_keys = set()
                     for char_dict in character_dicts:
                         all_keys.update(char_dict.keys())
+                    all_keys.add("name")
 
                     # Create DataFrame with all attributes
                     characters = DataFrame()
@@ -389,7 +422,19 @@ class DataService:
                         characters.insert(
                             len(characters.columns),
                             key,
-                            [char_dict.get(key) for char_dict in character_dicts],
+                            (
+                                Series(
+                                    [
+                                        char_dict.get(key)
+                                        for char_dict in character_dicts
+                                    ],
+                                    dtype="string",
+                                )
+                                if key == "name"
+                                else [
+                                    char_dict.get(key) for char_dict in character_dicts
+                                ]
+                            ),
                         )
 
                     characters.to_parquet("./data/characters.parquet")

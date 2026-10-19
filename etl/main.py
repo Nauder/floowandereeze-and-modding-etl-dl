@@ -5,7 +5,6 @@ import logging
 from services.data_service import DataService
 from util import print_splash, BColors, GAME_PATH, NUM_THREADS, clear_directory
 
-
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
@@ -35,7 +34,7 @@ if __name__ == "__main__":
     data_service.get_ids()
     logger.info(DONE_MESSAGE)
 
-    logger.info("Getting card names...")
+    logger.info("Getting asset names...")
     data_service.get_card_data()
     logger.info(DONE_MESSAGE)
 

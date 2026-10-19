@@ -323,3 +323,4 @@ legacy/data.json
 etl/services/temp/*
 local
 *.db
+AGENTS.md

@@ -54,7 +54,7 @@ class GameService:
                     elif "assets/resources/playmat/" in key:
                         self._parse_playmat(ids, env, bundle, key)
                     elif is_character_asset(key):
-                        self.logger.debug(
+                        self.logger.info(
                             "processing character asset: %s\nin bundle: %s", key, bundle
                         )
                         self._parse_character_asset(ids, bundle, key)
@@ -142,7 +142,7 @@ class GameService:
         asset_type = match_asset_by_string(key)
 
         if asset_type is None:
-            self.logger.debug("asset type not supported: %s", key)
+            self.logger.info("asset type not supported: %s", key)
             return
 
         konami_id = get_konami_id(key)
@@ -154,10 +154,10 @@ class GameService:
             ):
                 raise ValueError(f"Could not get konami_id for key {key}")
             else:
-                self.logger.debug("asset type not supported: %s", key)
+                self.logger.info("asset type not supported: %s", key)
                 return
 
-        self.logger.debug(
+        self.logger.info(
             "processing konami_id: %s\nin bundle: %s\nasset_type: %s",
             konami_id,
             bundle,
@@ -183,11 +183,11 @@ class GameService:
                     break
 
             ids["character"].append(character)
-            self.logger.debug("created new character: %s", character.konami_id)
+            self.logger.info("created new character: %s", character.konami_id)
 
         # Set the asset for this character
         character.set_asset_by_enum(asset_type, bundle)
-        self.logger.debug(
+        self.logger.info(
             "processed character: %s\nin bundle: %s\nasset_type: %s",
             character.konami_id,
             bundle,

@@ -3,6 +3,11 @@ import re
 from enum import Enum
 from typing import Any, List, Optional
 
+_CHARACTER_ASSET_PATTERNS = [
+    re.compile(pattern + r"\d{3}\.png")
+    for pattern in ("chara", "charaname", "cutin", "vs")
+]
+
 
 class CharaSeries(Enum):
     """
@@ -127,17 +132,14 @@ class CharaAssetType(Enum):
 
 def match_asset_by_string(asset_string: str) -> Optional[CharaAssetType]:
     for asset_type in CharaAssetType:
-        if asset_type.value.lower() in asset_string:
+        if asset_type.value.lower() in asset_string.lower():
             return asset_type
 
     return None
 
 
 def is_character_asset(name: str) -> bool:
-    return any(
-        re.search(pattern + r"\d{3}\.png", name) is not None
-        for pattern in ("chara", "charaname", "cutin", "vs")
-    )
+    return any(p.search(name) is not None for p in _CHARACTER_ASSET_PATTERNS)
 
 
 def get_konami_id(path: str) -> Optional[int]:

@@ -124,7 +124,7 @@ class ETLGUI:
         # Create checkboxes for each step
         self.steps = [
             ("Get IDs", self.get_ids),
-            ("Get Card Names", self.get_card_data),
+            ("Get Asset Names", self.get_card_data),
             ("Write Data", self.write_data),
             ("Remove Temporary Files", self.remove_temp_files),
         ]
@@ -235,7 +235,7 @@ class ETLGUI:
 
     def get_card_data(self):
         """Run the get_card_data step of the ETL process."""
-        self.logger.info("Getting card names...")
+        self.logger.info("Getting asset names...")
         self.data_service.get_card_data()
         self.logger.info("Done")
 

@@ -21,6 +21,8 @@ references to the bundles containing the data, which can be used for modding.
 
 - **Extracts** game metadata by reverse engineering Unity game files. The data currently extracted includes:
   - Card Arts.
+  - English card names, read directly from the game's downloaded card tables.
+  - Character, sleeve, and playmat display names where available in the game's text tables.
   - Sleeves.
   - Playmats.
 - **Transforms** raw game data into a structured format, and cleans bad data.
@@ -34,8 +36,8 @@ references to the bundles containing the data, which can be used for modding.
 - [Important Files Structure](#important-files-structure)
 - [Configuration](#configuration)
 - [CI/CD](#cicd)
+- [Validation](#validation)
 - [License](#license)
-- [Credits](#credits)
 
 ## Technologies Used
 
@@ -77,8 +79,38 @@ Run the extraction script to pull data from Unity game files:
 python .\etl\main.py
 ```
 
-After extracting the data, it will be available as Parquet files inside the `data/` folder, as well as a `version.txt` file
-containing the date of the last script run.
+To run the extraction and export steps together, launch `python etl/gui_main.py` and select **Write Data**.
+The export writes Parquet files inside `data/`, plus `version.txt` with the extraction date.
+
+### Card names
+
+The card-name step works offline and reads the Steam client's downloaded `CARD_Name`, `CARD_Indx`, and
+`CARD_Prop3` tables from the configured `game_path`. It decodes YDLZ versions 1 and 2, then joins each
+name's byte offset to its artwork ID from the property table. It does not use YGOPRODeck or the SQLite cache.
+Names use the game's English spelling, including names for alternate artwork and game-specific cards.
+The card Parquet columns remain unchanged.
+
+Complete the in-game data download before running the ETL. Missing or incompatible tables produce an
+error; artwork IDs without a name in the game tables are logged and skipped. Cards still need small,
+medium, and large artwork references to be exported. Duplicate names receive ` (alt N)` suffixes.
+
+The CLI currently runs ID extraction and name matching, writing `etl/services/temp/data.json`.
+Use the GUI's **Write Data** step to export Parquet files, or enable `write_data()` in `etl/main.py`.
+
+### Other asset names
+
+The same **Get Asset Names** step also reads `IDS_NPC_NAME` and `IDS_ITEM` from the local game files,
+plus `IDS_SKILL` when an accessory name references a skill. These MessagePack tables may scramble
+both keys and values; the pipeline decodes them and resolves character names, character subnames,
+and skill-name references in item labels.
+
+`characters.parquet`, `sleeves.parquet`, and `fields.parquet` include a nullable string `name` column.
+Their existing IDs and artwork references are preserved, including entries with duplicate names.
+Missing labels, blank names, and unresolved references produce `null` rather than removing the asset.
+Missing optional text tables produce a warning; damaged tables produce an error.
+
+Run `pip install -r requirements.txt` to install the MessagePack dependency, then rerun **Get Asset Names**
+and **Write Data** to populate the new fields. Card names and all other names still work offline.
 
 ## Important Files Structure
 
@@ -99,7 +131,7 @@ after the last push it should already be up to date.
 
 Modify the values in `config.json`, the configurations are:
 
-- **game_path** path to your Duel Links installation's user data, up to the LocalData folder.
+- **game_path** path to your Duel Links installation's account data folder, such as `LocalData/2cdc25a0`.
 - **num_threads** amount of threads to use when extracting data, performance varies by hardware.
 - **excluded_sleeves** sleeve assets to be ignored when building the list of sleeves. The game names sleeve materials
 the same way as animated sleeve frames, so they are removed manually.
@@ -115,16 +147,16 @@ The check requires a minimum score of 9/10.
 - **Black**: Runs on every push and pull request to the main branch to enforce consistent code formatting across the
 project.
 
-## Known Issues
+## Validation
 
-- The card name is obtained using the YGOPro API, which is not guaranteed to be accurate or complete.
-A more reliable approach would be to decrypt the files containing the card names, but this is not 
-implemented yet.
+Run the binary-table and offline pipeline regression tests with Python's built-in runner:
+
+```sh
+python -m unittest discover -s tests -v
+black . --check --extend-exclude "etl/decode"
+pylint etl --ignore-paths=etl/decode,local --disable=import-error --fail-under=9
+```
 
 ## License
 
 This project is licensed under the [GNU General Public License](LICENSE).
-
-## Credits
-
-- [YGOPRODeck](https://ygoprodeck.com) for their public API.

@@ -3,10 +3,9 @@ import re
 from enum import Enum
 from typing import Any, List, Optional
 
-_CHARACTER_ASSET_PATTERNS = [
-    re.compile(pattern + r"\d{3}\.png")
-    for pattern in ("chara", "charaname", "cutin", "vs")
-]
+_CHARACTER_ASSET_PATTERN = re.compile(
+    r"(?:^|/)(?:chara|charaname|cutin|vs)\d{3}(?:_\d+)?\.png$", re.IGNORECASE
+)
 
 
 class CharaSeries(Enum):
@@ -131,15 +130,18 @@ class CharaAssetType(Enum):
 
 
 def match_asset_by_string(asset_string: str) -> Optional[CharaAssetType]:
+    """Match the complete filename so expression 10 cannot match expression 1."""
+    filename = asset_string.rsplit("/", 1)[-1].casefold().removesuffix(".png")
     for asset_type in CharaAssetType:
-        if asset_type.value.lower() in asset_string.lower():
+        if asset_type.value.casefold() == filename:
             return asset_type
 
     return None
 
 
 def is_character_asset(name: str) -> bool:
-    return any(p.search(name) is not None for p in _CHARACTER_ASSET_PATTERNS)
+    """Include numbered duel/dialog expressions as well as base character assets."""
+    return _CHARACTER_ASSET_PATTERN.search(name) is not None
 
 
 def get_konami_id(path: str) -> Optional[int]:
